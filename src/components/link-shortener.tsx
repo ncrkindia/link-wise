@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
 import { shortenLink, type ShortenState } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ function SubmitButton() {
 
 export function LinkShortener() {
   const initialState: ShortenState = { message: null, errors: {} };
-  const [state, dispatch] = useFormState(shortenLink, initialState);
+  const [state, dispatch] = useActionState(shortenLink, initialState);
   const [date, setDate] = useState<Date | undefined>();
   const { toast } = useToast();
   const qrImage = placeholderImages.find(p => p.id === 'qr_code_placeholder');
