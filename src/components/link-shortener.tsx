@@ -14,13 +14,14 @@ import {
 } from '@/components/ui/accordion';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Copy, Download, KeyRound, Link as LinkIcon, QrCode } from 'lucide-react';
+import { Calendar as CalendarIcon, Copy, Download, KeyRound, Link as LinkIcon, QrCode, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { placeholderImages } from '@/lib/data';
+import placeholderData from '@/lib/placeholder-images.json';
+const placeholderImages = placeholderData.placeholderImages;
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -45,6 +46,23 @@ export function LinkShortener() {
       title: 'Copied to clipboard!',
       description: text,
     });
+  };
+
+  const handleShare = async (url: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Link-Wise Short URL',
+          text: 'Check out this link!',
+          url: url,
+        });
+      } catch (error) {
+        console.error('Share failed', error);
+      }
+    } else {
+      // Fallback to clipboard if Web Share API is not supported (e.g. old desktop browsers)
+      handleCopy(url);
+    }
   };
 
   return (
@@ -106,8 +124,8 @@ export function LinkShortener() {
                         onSelect={setDate}
                         initialFocus
                       />
-                       <input type="hidden" name="expiresAt" value={date?.toISOString()} />
                     </PopoverContent>
+                    <input type="hidden" name="expiresAt" value={date ? date.toISOString() : ''} />
                   </Popover>
                 </AccordionContent>
               </AccordionItem>
@@ -130,9 +148,14 @@ export function LinkShortener() {
                     <a href={state.shortUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-primary text-lg hover:underline truncate">
                         {state.shortUrl.replace(/^https?:\/\//, '')}
                     </a>
-                    <Button variant="ghost" size="icon" onClick={() => handleCopy(state.shortUrl!)}>
-                        <Copy className="h-5 w-5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleCopy(state.shortUrl!)}>
+                          <Copy className="h-5 w-5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleShare(state.shortUrl!)}>
+                          <Share2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                 </div>
                 <div className="flex-shrink-0 flex gap-2">
                     <Button variant="outline" size="icon">

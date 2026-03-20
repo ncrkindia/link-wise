@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { LinkShortener } from '@/components/link-shortener';
-import { placeholderImages } from '@/lib/data';
+import placeholderData from '@/lib/placeholder-images.json';
+const placeholderImages = placeholderData.placeholderImages;
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, BarChart, ShieldCheck } from 'lucide-react';
 

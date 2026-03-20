@@ -1,48 +1,53 @@
+/**
+ * @file auth.ts (lib)
+ * @description Server-side authentication helper functions for Link-Wise.
+ *
+ * This module wraps the raw `next-auth` exports and exposes simplified helpers
+ * for use throughout Server Components and Server Actions. It abstracts session
+ * retrieval, login redirect, and logout redirect behind clean typed functions.
+ *
+ * All exports are marked `'use server'` so they can only be called from the
+ * server boundary (Server Components, Server Actions, or Route Handlers).
+ */
 'use server';
-import { cookies } from 'next/headers';
-import { mockUsers } from './data';
+import { auth as nextAuth, signIn as nextSignIn, signOut as nextSignOut } from '@/auth';
 import type { User } from './definitions';
 
-const COOKIE_NAME = 'linkwise-session';
-
+/**
+ * Retrieves the current authenticated user's session data.
+ *
+ * Reads the NextAuth session cookie, maps it to the application's `User` type,
+ * and augments it with custom DB properties (`isAdmin`, `isBlocked`, `name`)
+ * that were injected by the `session` callback in `src/auth.ts`.
+ *
+ * @returns The current `User` if authenticated, or `null` if the session is missing.
+ */
 export async function getSession(): Promise<User | null> {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get(COOKIE_NAME);
-
-  if (!sessionCookie) {
-    return null;
-  }
-
-  try {
-    const user = JSON.parse(sessionCookie.value) as User;
-    const foundUser = mockUsers.find(u => u.id === user.id);
-    return foundUser || null;
-  } catch {
-    return null;
-  }
-}
-
-export async function login(email: string): Promise<{ success: boolean; message: string }> {
-  const user = mockUsers.find(u => u.id === email);
-
-  if (!user) {
-    return { success: false, message: 'Invalid credentials' };
-  }
+  const session = await nextAuth();
+  if (!session?.user?.email) return null;
   
-  if (user.isBlocked) {
-    return { success: false, message: 'This account has been blocked.' };
-  }
-
-  const session = { id: user.id, isAdmin: user.isAdmin };
-  cookies().set(COOKIE_NAME, JSON.stringify(session), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 * 7, // One week
-    path: '/',
-  });
-  return { success: true, message: 'Logged in successfully' };
+  return {
+    id: session.user.email,
+    name: session.user.name,
+    isAdmin: (session.user as any).isAdmin || false,
+    isBlocked: (session.user as any).isBlocked || false,
+    createdAt: new Date().toISOString()
+  };
 }
 
+/**
+ * Initiates a Keycloak SSO login flow, redirecting the user to `/dashboard` on success.
+ * Must be called from a Server Action (e.g. from a form action).
+ */
+export async function login() {
+  await nextSignIn('keycloak', { redirectTo: '/dashboard' });
+}
+
+/**
+ * Signs the user out and redirects them to the homepage.
+ * Must be called from a Server Action (e.g. from a form action).
+ */
 export async function logout() {
-  cookies().delete(COOKIE_NAME);
+  await nextSignOut({ redirectTo: '/' });
 }
+

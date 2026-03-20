@@ -1,4 +1,18 @@
+/**
+ * @file components/header.tsx
+ * @description Global site header (sticky, top navigation bar).
+ *
+ * This Server Component reads the current session and renders a context-aware
+ * navigation bar:
+ *  - **Unauthenticated**: Shows a "Login" button.
+ *  - **Authenticated**: Shows a "Dashboard" link and user avatar dropdown with
+ *    account info, navigation links, optional "Admin" entry (for admins), and logout.
+ *
+ * The avatar dropdown displays the user's name (from Keycloak) or falls back
+ * to their email address as the label.
+ */
 import { getSession } from '@/lib/auth';
+
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -6,7 +20,8 @@ import { logout } from '@/lib/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
-import { placeholderImages } from '@/lib/data';
+import placeholderData from '@/lib/placeholder-images.json';
+const placeholderImages = placeholderData.placeholderImages;
 
 export default async function Header() {
   const session = await getSession();
@@ -27,15 +42,15 @@ export default async function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                        <Avatar className="h-9 w-9">
-                         <AvatarImage src={avatarImage?.imageUrl} alt={session.id} data-ai-hint={avatarImage?.imageHint} />
-                         <AvatarFallback>{session.id.charAt(0).toUpperCase()}</AvatarFallback>
+                         <AvatarImage src={avatarImage?.imageUrl} alt={session.name || session.id} data-ai-hint={avatarImage?.imageHint} />
+                         <AvatarFallback>{(session.name || session.id).charAt(0).toUpperCase()}</AvatarFallback>
                        </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">My Account</p>
+                        <p className="text-sm font-medium leading-none">{session.name || 'My Account'}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {session.id}
                         </p>

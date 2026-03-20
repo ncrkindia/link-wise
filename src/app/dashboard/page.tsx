@@ -1,9 +1,25 @@
+/**
+ * @file app/dashboard/page.tsx
+ * @description Authenticated user dashboard page.
+ *
+ * This Server Component gate-keeps the dashboard behind a valid session.
+ * Unauthenticated users are redirected to `/login`.
+ * On render, it fetches:
+ *  - Aggregated analytics (total links, total clicks, top link) for the stat cards.
+ *  - The full list of the user's non-deleted links for the <LinksTable>.
+ *
+ * The dashboard also exposes a "Bulk Shorten Tool" tab powered by <BulkShortener>.
+ *
+ * Route: `/dashboard` (protected)
+ */
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getDashboardAnalytics, getUserLinks } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Link as LinkIcon, MousePointerClick } from "lucide-react";
 import { LinksTable } from "./links-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkShortener } from "@/components/bulk-shortener";
 
 export default async function DashboardPage() {
     const session = await getSession();
@@ -18,7 +34,7 @@ export default async function DashboardPage() {
         <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
             <div className="space-y-4 mb-8">
                 <h1 className="text-3xl md:text-4xl font-headline font-bold">Dashboard</h1>
-                <p className="text-muted-foreground">Welcome back, {session.id}. Here's an overview of your links.</p>
+                <p className="text-muted-foreground">Welcome back, {session.name || session.id}. Here's an overview of your links.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -50,20 +66,31 @@ export default async function DashboardPage() {
                     <CardContent>
                         <div className="text-2xl font-bold truncate">/{analytics.topLink?.id || 'N/A'}</div>
                         <p className="text-xs text-muted-foreground">
-                            {analytics.topLink?.clicks.toLocaleString() || 0} clicks
+                            {analytics.topLink?.clicks ? analytics.topLink.clicks.toLocaleString() : 0} clicks
                         </p>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>My Links</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <LinksTable links={links} />
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="links" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 sm:max-w-[400px]">
+                    <TabsTrigger value="links">My Links</TabsTrigger>
+                    <TabsTrigger value="bulk">Bulk Shorten Tool</TabsTrigger>
+                </TabsList>
+                <TabsContent value="links" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>My Identifiers</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <LinksTable links={links} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="bulk" className="mt-4 border-none p-0 outline-none">
+                    <BulkShortener />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
