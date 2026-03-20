@@ -1,107 +1,54 @@
+/**
+ * @file data.ts
+ * @description Server-side data fetching functions for the Link-Wise application.
+ *
+ * All functions in this module run exclusively on the server and interact directly
+ * with the MySQL database via the shared connection pool from `lib/db.ts`.
+ * They are consumed by Next.js Server Components (pages/layouts) to provide
+ * pre-fetched data for rendering.
+ *
+ * Functions:
+ *  - `getDashboardAnalytics` — Per-user aggregated stats for the dashboard.
+ *  - `getAdminAnalytics`     — App-wide statistics for the admin panel.
+ *  - `getUserLinks`          — All non-deleted links owned by a user.
+ *  - `getAllUsers`            — All registered users (admin only).
+ *  - `getAllLinks`            — All links (admin only).
+ */
+import { query } from './db';
 import type { User, Link } from './definitions';
-import placeholderData from './placeholder-images.json';
-export const placeholderImages = placeholderData.placeholderImages;
 
-export const mockUsers: User[] = [
-  {
-    id: 'admin@linkwise.com',
-    createdAt: new Date('2023-01-15T10:30:00Z').toISOString(),
-    isBlocked: false,
-    isAdmin: true,
-  },
-  {
-    id: 'user1@example.com',
-    createdAt: new Date('2023-02-20T14:00:00Z').toISOString(),
-    isBlocked: false,
-    isAdmin: false,
-  },
-  {
-    id: 'user2@example.com',
-    createdAt: new Date('2023-03-10T09:00:00Z').toISOString(),
-    isBlocked: true,
-    isAdmin: false,
-  },
-  {
-    id: 'user3@example.com',
-    createdAt: new Date('2023-05-01T18:45:00Z').toISOString(),
-    isBlocked: false,
-    isAdmin: false,
-  },
-];
-
-export const mockLinks: Link[] = [
-  {
-    id: 'abc1234',
-    originalUrl: 'https://example.com/very-long-url-that-needs-shortening-for-user1',
-    userId: 'user1@example.com',
-    createdAt: new Date('2023-08-01T10:00:00Z').toISOString(),
-    expiresAt: null,
-    hasPassword: true,
-    isDeleted: false,
-    clicks: 1254,
-  },
-  {
-    id: 'def5678',
-    originalUrl: 'https://another-example.com/another-long-url-for-sharing',
-    userId: 'user1@example.com',
-    createdAt: new Date('2023-08-05T15:30:00Z').toISOString(),
-    expiresAt: new Date('2024-09-01T00:00:00Z').toISOString(),
-    hasPassword: false,
-    isDeleted: false,
-    clicks: 832,
-  },
-  {
-    id: 'ghi9012',
-    originalUrl: 'https://some-other-domain.com/a-path/to-a-resource',
-    userId: 'user2@example.com',
-    createdAt: new Date('2023-08-02T11:00:00Z').toISOString(),
-    expiresAt: null,
-    hasPassword: false,
-    isDeleted: false,
-    clicks: 543,
-  },
-  {
-    id: 'jkl3456',
-    originalUrl: 'https://google.com',
-    userId: 'admin@linkwise.com',
-    createdAt: new Date('2023-08-08T09:00:00Z').toISOString(),
-    expiresAt: null,
-    hasPassword: false,
-    isDeleted: false,
-    clicks: 9876,
-  },
-    {
-    id: 'mno7890',
-    originalUrl: 'https://github.com/facebook/react',
-    userId: 'user1@example.com',
-    createdAt: new Date('2023-08-10T12:00:00Z').toISOString(),
-    expiresAt: null,
-    hasPassword: false,
-    isDeleted: false,
-    clicks: 234,
-  },
-  {
-    id: 'pqr1122',
-    originalUrl: 'https://news.ycombinator.com',
-    userId: null, // Anonymous link
-    createdAt: new Date('2023-08-11T14:20:00Z').toISOString(),
-    expiresAt: null,
-    hasPassword: false,
-    isDeleted: false,
-    clicks: 5678,
-  },
-];
-
-mockUsers.forEach(user => {
-    user.links = mockLinks.filter(link => link.userId === user.id);
-});
 
 export const getDashboardAnalytics = async (userId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const userLinks = mockLinks.filter(link => link.userId === userId);
+    const userLinks = await query<any[]>('SELECT * FROM links WHERE user_id = ? AND is_deleted = FALSE', [userId]);
     const totalLinks = userLinks.length;
-    const totalClicks = userLinks.reduce((acc, link) => acc + link.clicks, 0);
-    const topLink = userLinks.sort((a,b) => b.clicks - a.clicks)[0];
+    
+    const clicksRes = await query<any[]>('SELECT COUNT(*) as total FROM clicks c JOIN links l ON c.link_id = l.id WHERE l.user_id = ? AND l.is_deleted = FALSE', [userId]);
+    const totalClicks = Number(clicksRes[0]?.total || 0);
+
+    const topLinkRes = await query<any[]>(`
+      SELECT l.*, COUNT(c.id) as clicks 
+      FROM links l 
+      LEFT JOIN clicks c ON l.id = c.link_id 
+      WHERE l.user_id = ? AND l.is_deleted = FALSE 
+      GROUP BY l.id 
+      ORDER BY clicks DESC 
+      LIMIT 1
+    `, [userId]);
+    
+    let topLink = null;
+    if (topLinkRes.length > 0) {
+        topLink = {
+            id: topLinkRes[0].id,
+            originalUrl: topLinkRes[0].original_url,
+            userId: topLinkRes[0].user_id,
+            createdAt: String(topLinkRes[0].created_at),
+            expiresAt: topLinkRes[0].expires_at ? String(topLinkRes[0].expires_at) : null,
+            hasPassword: !!topLinkRes[0].password_hash,
+            isDeleted: !!topLinkRes[0].is_deleted,
+            isActive: !!topLinkRes[0].is_active,
+            clicks: Number(topLinkRes[0].clicks)
+        };
+    }
 
     return {
         totalLinks,
@@ -111,19 +58,28 @@ export const getDashboardAnalytics = async (userId: string) => {
 }
 
 export const getAdminAnalytics = async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const totalLinks = mockLinks.length;
-    const totalClicks = mockLinks.reduce((acc, link) => acc + link.clicks, 0);
-    const totalUsers = mockUsers.length;
-    const linkActivity = [
-        { date: '2023-08-01', links: 5, clicks: 1200 },
-        { date: '2023-08-02', links: 7, clicks: 2300 },
-        { date: '2023-08-03', links: 6, clicks: 1800 },
-        { date: '2023-08-04', links: 9, clicks: 3200 },
-        { date: '2023-08-05', links: 8, clicks: 2800 },
-        { date: '2023-08-06', links: 12, clicks: 4500 },
-        { date: '2023-08-07', links: 10, clicks: 3800 },
-    ];
+    const linksRes = await query<any[]>('SELECT COUNT(*) as total FROM links');
+    const totalLinks = Number(linksRes[0]?.total || 0);
+
+    const clicksRes = await query<any[]>('SELECT COUNT(*) as total FROM clicks');
+    const totalClicks = Number(clicksRes[0]?.total || 0);
+
+    const usersRes = await query<any[]>('SELECT COUNT(*) as total FROM users');
+    const totalUsers = Number(usersRes[0]?.total || 0);
+
+    const activityRes = await query<any[]>(`
+        SELECT DATE(created_at) as date, COUNT(*) as links, 0 as clicks
+        FROM links
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    `);
+    
+    const linkActivity = activityRes.map(row => ({
+        date: new Date(row.date).toISOString().split('T')[0],
+        links: Number(row.links),
+        clicks: 0
+    }));
 
     return {
         totalLinks,
@@ -134,16 +90,41 @@ export const getAdminAnalytics = async () => {
 };
 
 export const getUserLinks = async (userId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockLinks.filter(link => link.userId === userId && !link.isDeleted);
+    const links = await query<any[]>('SELECT l.*, COUNT(c.id) as clicks FROM links l LEFT JOIN clicks c ON l.id = c.link_id WHERE l.user_id = ? AND l.is_deleted = FALSE GROUP BY l.id', [userId]);
+    return links.map(l => ({
+        id: l.id,
+        originalUrl: l.original_url,
+        userId: l.user_id,
+        createdAt: String(l.created_at),
+        expiresAt: l.expires_at ? String(l.expires_at) : null,
+        hasPassword: !!l.password_hash,
+        isDeleted: !!l.is_deleted,
+        isActive: !!l.is_active,
+        clicks: Number(l.clicks)
+    }));
 };
 
 export const getAllUsers = async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockUsers;
+    const users = await query<any[]>('SELECT * FROM users');
+    return users.map(u => ({
+        id: u.id,
+        createdAt: String(u.created_at),
+        isBlocked: !!u.is_blocked,
+        isAdmin: !!u.is_admin
+    }));
 };
 
 export const getAllLinks = async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockLinks;
+    const links = await query<any[]>('SELECT l.*, COUNT(c.id) as clicks FROM links l LEFT JOIN clicks c ON l.id = c.link_id GROUP BY l.id');
+    return links.map(l => ({
+        id: l.id,
+        originalUrl: l.original_url,
+        userId: l.user_id,
+        createdAt: String(l.created_at),
+        expiresAt: l.expires_at ? String(l.expires_at) : null,
+        hasPassword: !!l.password_hash,
+        isDeleted: !!l.is_deleted,
+        isActive: !!l.is_active,
+        clicks: Number(l.clicks)
+    }));
 }
