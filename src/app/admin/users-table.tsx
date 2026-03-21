@@ -14,8 +14,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Ban, MoreHorizontal, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { toggleUserBlock } from "@/lib/actions";
+import { useTransition } from "react";
 
 export function UsersTable({ users }: { users: User[] }) {
+  const [isPending, startTransition] = useTransition();
 
   return (
     <div className="w-full overflow-x-auto rounded-lg border">
@@ -46,12 +48,12 @@ export function UsersTable({ users }: { users: User[] }) {
               <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={user.isAdmin}>
+                        <Button variant="ghost" size="icon" disabled={user.isAdmin || isPending}>
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toggleUserBlock(user.id)} disabled={user.isAdmin}>
+                        <DropdownMenuItem onClick={() => startTransition(() => { toggleUserBlock(user.id) })} disabled={user.isAdmin || isPending}>
                             {user.isBlocked ? <UserCheck className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
                             <span>{user.isBlocked ? 'Unblock' : 'Block'}</span>
                         </DropdownMenuItem>

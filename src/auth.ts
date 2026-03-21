@@ -23,11 +23,13 @@ import { query } from './lib/db';
 
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     KeycloakProvider({
       clientId: process.env.AUTH_KEYCLOAK_ID,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
       issuer: process.env.AUTH_KEYCLOAK_ISSUER,
+      checks: ['state'], // Bypass PKCE issues locally
     }),
   ],
   callbacks: {
