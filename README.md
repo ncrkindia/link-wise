@@ -1,6 +1,6 @@
 # Link-Wise
 
-**Link-Wise** is a production-ready URL shortener and analytics platform built with **Next.js 15**, **MySQL**, and **Keycloak SSO** — part of the **SL Pro Ecosystem**.
+**Link-Wise** is a production-ready URL shortener and analytics platform built with **Next.js 15**, **MySQL**, and use **Keycloak based SSO** — part of the **SL Pro Ecosystem**.
 
 ---
 
