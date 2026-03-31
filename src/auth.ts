@@ -40,8 +40,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async session({ session }) {
+    async jwt({ token, account }) {
+      // Capture the ID token from Keycloak on initial sign-in
+      if (account) {
+        token.id_token = account.id_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user?.email) {
+        // Pass the id_token from the JWT to the session
+        (session as any).id_token = token.id_token;
+
         const users = await query<any[]>('SELECT * FROM users WHERE id = ? LIMIT 1', [session.user.email]);
         if (users.length > 0) {
           // Augment session object with custom database properties

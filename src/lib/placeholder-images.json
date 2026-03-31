@@ -3,19 +3,19 @@
     {
       "id": "hero",
       "description": "Abstract network connections graphic",
-      "imageUrl": "https://images.unsplash.com/photo-1649429398909-db7ae841c386?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG5ldHdvcmt8ZW58MHx8fHwxNzY0MzMwNzYwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "/hero.jpg?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG5ldHdvcmt8ZW58MHx8fHwxNzY0MzMwNzYwfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "abstract network"
     },
     {
       "id": "avatar_placeholder",
       "description": "A generic user avatar",
-      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQyNzA2MTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "/avatar_placeholder.jpg?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQyNzA2MTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "qr_code_placeholder",
       "description": "Placeholder QR code",
-      "imageUrl": "https://images.unsplash.com/photo-1662383729882-e03ce8e00887?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxxciUyMGNvZGV8ZW58MHx8fHwxNzY0MzM0NzA5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "/qr_code_placeholder.jpg?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxxciUyMGNvZGV8ZW58MHx8fHwxNzY0MzM0NzA5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "qr code"
     }
   ]
