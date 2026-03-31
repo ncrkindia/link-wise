@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -41,8 +41,8 @@ COPY --from=builder /app/package.json ./package.json
 USER nextjs
 
 # Expose internal port
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3010
+ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["npm", "start"]

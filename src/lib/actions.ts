@@ -18,7 +18,7 @@
 'use server';
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { login as authLogin, logout as authLogout, getSession } from './auth';
+import { login as authLogin, logout as authLogout, getSession, getLogoutUrl } from './auth';
 import { revalidatePath } from 'next/cache';
 import { query } from './db';
 import { headers } from 'next/headers';
@@ -125,9 +125,13 @@ export async function login() {
   await authLogin();
 }
 
+export async function handleSignOut() {
+    const logoutUrl = await getLogoutUrl();
+    return logoutUrl;
+}
+
 export async function logout() {
     await authLogout();
-    redirect('/');
 }
 
 // Admin actions

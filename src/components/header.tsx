@@ -16,7 +16,7 @@ import { getSession } from '@/lib/auth';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { logout } from '@/lib/actions';
+import { LogoutButton } from './logout-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
@@ -72,14 +72,7 @@ export default async function Header() {
                         </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <form action={logout}>
-                        <DropdownMenuItem asChild>
-                            <button type="submit" className="w-full">
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Log out</span>
-                            </button>
-                        </DropdownMenuItem>
-                    </form>
+                    <LogoutButton />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

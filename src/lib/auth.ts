@@ -25,7 +25,7 @@ import type { User } from './definitions';
 export async function getSession(): Promise<User | null> {
   const session = await nextAuth();
   if (!session?.user?.email) return null;
-  
+
   return {
     id: session.user.email,
     name: session.user.name,
@@ -44,8 +44,30 @@ export async function login() {
 }
 
 /**
- * Signs the user out and redirects them to the homepage.
- * Must be called from a Server Action (e.g. from a form action).
+ * Generates the Keycloak OIDC logout URL based on the current session and environment.
+ * @returns {Promise<string>} The full Keycloak logout endpoint URL.
+ */
+export async function getLogoutUrl() {
+  const session = await nextAuth();
+  const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
+  const clientId = process.env.AUTH_KEYCLOAK_ID;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://linkwise.slpro.in';
+  const idToken = (session as any)?.id_token;
+  
+  // OIDC standard logout endpoint
+  let logoutUrl = `${issuer}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(appUrl)}`;
+  
+  if (idToken) {
+    logoutUrl += `&id_token_hint=${idToken}`;
+  } else {
+    logoutUrl += `&client_id=${clientId}`;
+  }
+
+  return logoutUrl;
+}
+
+/**
+ * Standard server-side logout (clears local cookies).
  */
 export async function logout() {
   await nextSignOut({ redirectTo: '/' });
