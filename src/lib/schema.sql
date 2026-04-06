@@ -18,7 +18,8 @@ CREATE TABLE links (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ, -- Optional expiration date
   password_hash VARCHAR(255), -- Optional password (hashed)
-  is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  is_pixel BOOLEAN DEFAULT FALSE
 );
 
 -- Clicks table

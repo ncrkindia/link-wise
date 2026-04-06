@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1
+# @author Naveen Chauhan (https://github.com/ncrkindia) 
+# @project Link-Wise Analytics - Unified Standalone Bundle
+
+
+# --- Builder Stage (Next.js) ---
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# --- Final All-In-One Image ---
+FROM ubuntu:22.04
+
+# Avoid prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies (Node.js, MariaDB, OpenJDK, Supervisor)
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    mariadb-server \
+    openjdk-17-jre-headless \
+    supervisor \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Keycloak
+WORKDIR /opt
+RUN curl -L https://github.com/keycloak/keycloak/releases/download/22.0.1/keycloak-22.0.1.tar.gz -o keycloak.tar.gz \
+    && tar -xzf keycloak.tar.gz && mv keycloak-22.0.1 keycloak && rm keycloak.tar.gz
+
+# Set up identity theme
+COPY keycloak/pahchaan /opt/keycloak/themes/pahchaan
+
+# Set up application
+WORKDIR /app
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Copy schema and config (Standalone variants)
+COPY src/lib/mysql-schema.sql ./src/lib/mysql-schema.sql
+COPY realm-export.json /opt/keycloak/data/import/realm-export.json
+COPY supervisord-standalone.conf /etc/supervisor/conf.d/supervisord.conf
+COPY entrypoint-standalone.sh /app/entrypoint-standalone.sh
+RUN chmod +x /app/entrypoint-standalone.sh
+
+# MariaDB/System Logs directories
+RUN mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld
+
+# Environment for local services
+ENV DATABASE_URL="mysql://linkwise_user:linkwise_pass@localhost:3306/linkwise"
+ENV AUTH_KEYCLOAK_ID="linkwise-client"
+ENV AUTH_KEYCLOAK_SECRET="lH1pOZpmFtxSMD5hRsEZtjaH7SxibcEV"
+ENV AUTH_KEYCLOAK_ISSUER="http://localhost:8080/realms/e-pahchaan"
+ENV NEXT_PUBLIC_APP_URL="http://localhost:3010"
+ENV AUTH_SECRET="vjsjhkhjdhni782gbsupfsiuyrhnsg8"
+ENV AUTH_TRUST_HOST=true
+
+# Expose App, Keycloak, and MariaDB
+EXPOSE 3010 8080
+
+ENTRYPOINT ["/app/entrypoint-standalone.sh"]

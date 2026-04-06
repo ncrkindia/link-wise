@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { LogoutButton } from './logout-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, LogOut, User as UserIcon, Mail } from 'lucide-react';
 import placeholderData from '@/lib/placeholder-images.json';
 const placeholderImages = placeholderData.placeholderImages;
 
@@ -36,7 +36,10 @@ export default async function Header() {
             {session ? (
               <div className="flex items-center gap-4">
                 <Button variant="ghost" asChild>
-                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/dashboard">Links</Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard/email-manager">Campaigns</Link>
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -60,7 +63,13 @@ export default async function Header() {
                      <DropdownMenuItem asChild>
                         <Link href="/dashboard">
                           <LayoutDashboard className="mr-2 h-4 w-4" />
-                          <span>Dashboard</span>
+                          <span>My Links</span>
+                        </Link>
+                     </DropdownMenuItem>
+                     <DropdownMenuItem asChild>
+                        <Link href="/dashboard/email-manager">
+                          <Mail className="mr-2 h-4 w-4" />
+                          <span>Email Campaigns</span>
                         </Link>
                      </DropdownMenuItem>
                     {session.isAdmin && (

@@ -14,6 +14,10 @@
  *  - `getAllUsers`            — All registered users (admin only).
  *  - `getAllLinks`            — All links (admin only).
  */
+/** 
+ * @author Naveen Chauhan (https://github.com/ncrkindia) 
+ * @project Link-Wise Analytics 
+ */
 import { query } from './db';
 import type { User, Link } from './definitions';
 
@@ -46,6 +50,7 @@ export const getDashboardAnalytics = async (userId: string) => {
             hasPassword: !!topLinkRes[0].password_hash,
             isDeleted: !!topLinkRes[0].is_deleted,
             isActive: !!topLinkRes[0].is_active,
+            isPixel: !!topLinkRes[0].is_pixel,
             clicks: Number(topLinkRes[0].clicks)
         };
     }
@@ -100,6 +105,7 @@ export const getUserLinks = async (userId: string) => {
         hasPassword: !!l.password_hash,
         isDeleted: !!l.is_deleted,
         isActive: !!l.is_active,
+        isPixel: !!l.is_pixel,
         clicks: Number(l.clicks)
     }));
 };
@@ -125,6 +131,20 @@ export const getAllLinks = async () => {
         hasPassword: !!l.password_hash,
         isDeleted: !!l.is_deleted,
         isActive: !!l.is_active,
+        isPixel: !!l.is_pixel,
         clicks: Number(l.clicks)
     }));
 }
+
+export const getLinkClicks = async (linkId: string) => {
+    const clicks = await query<any[]>('SELECT * FROM clicks WHERE link_id = ? ORDER BY clicked_at DESC', [linkId]);
+    return clicks.map(c => ({
+        id: c.id,
+        linkId: c.link_id,
+        clickedAt: String(c.clicked_at),
+        ipAddress: c.ip_address,
+        userAgent: c.user_agent,
+        referrer: c.referrer,
+        countryCode: c.country_code
+    }));
+};

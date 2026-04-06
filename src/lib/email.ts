@@ -1,68 +1,71 @@
-/**
- * @file lib/email.ts
- * @description SMTP email utility for Link-Wise report delivery via Nodemailer.
- *
- * This module provides two primary exports:
- *
- * - `createMailer()`: Returns a configured Nodemailer transporter.
- *   - If `SMTP_HOST` is set in `.env.local`, it uses the provided SMTP credentials.
- *   - If `SMTP_HOST` is NOT set, it auto-creates an Ethereal test account, allowing
- *     you to preview sent emails at the URL logged in the server console.
- *
- * - `sendReportEmail(emailAddress, links)`: Composes and sends an HTML analytics
- *   report email matching the Link-Wise brand (dark heading, table with badge
- *   styling for statuses, branded footer). Falls back to a plaintext body.
- *
- * Required environment variables (optional — falls back to Ethereal):
- *   SMTP_HOST  — e.g. smtp.gmail.com
- *   SMTP_PORT  — e.g. 587
- *   SMTP_USER  — SMTP authentication username
- *   SMTP_PASS  — SMTP authentication password
+/** 
+ * @author Naveen Chauhan (https://github.com/ncrkindia) 
+ * @project Link-Wise Analytics 
  */
 import nodemailer from 'nodemailer';
-import { type Link as LinkType } from './definitions';
+import { type Link as LinkType, type EmailAccount, type EmailCampaign } from './definitions';
 
-export async function createMailer() {
+/**
+ * Creates a Nodemailer transporter.
+ * If config is provided, uses it. Otherwise, defaults to system ENV or Ethereal fallback.
+ */
+export async function createMailer(config?: Partial<EmailAccount>) {
+  if (config && config.host) {
+    return nodemailer.createTransport({
+      host: config.host,
+      port: config.port || 587,
+      auth: {
+        user: config.username,
+        pass: config.password,
+      },
+    });
+  }
+
   if (process.env.SMTP_HOST) {
+    const port = Number(process.env.SMTP_PORT) || 587;
+    console.log(`[SMTP] Using Local SMTP Relay: ${process.env.SMTP_HOST}:${port} (User: ${process.env.SMTP_USER})`);
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
+      port: port,
+      secure: port === 465, // SSL/TLS for port 465, otherwise STARTTLS
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
   } else {
-    // Generate test account for Ethereal if no SMTP config is provided
+    console.warn("[SMTP] No SMTP_HOST found in env. Falling back to Ethereal/Test mode.");
     const testAccount = await nodemailer.createTestAccount();
-    console.log("Created Ethereal Email test account:", testAccount.user);
     const transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
-      secure: false, 
+      secure: false,
       auth: {
         user: testAccount.user,
         pass: testAccount.pass,
       },
     });
-    // Attach the account to the transporter so we can log it later
     (transporter as any).testAccount = testAccount;
     return transporter;
   }
 }
 
-export async function sendReportEmail(emailAddress: string, links: LinkType[]) {
+export async function sendReportEmail(
+  emailAddress: string, 
+  links: LinkType[], 
+  sender?: { name?: string | null, id: string, isAdmin: boolean },
+  filters?: Record<string, string>
+) {
   const transporter = await createMailer();
-  
-  // Format HTML Email matching Link-Wise theme
+
   const trs = links.map(link => {
-      const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date();
-      const status = !link.isActive ? 'Disabled' : (isExpired ? 'Expired' : 'Active');
-      return `
+    const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date();
+    const status = !link.isActive ? 'Disabled' : (isExpired ? 'Expired' : 'Active');
+    return `
         <tr>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151;"><strong>/${link.id}</strong></td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${link.originalUrl}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151;">${link.clicks}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151;">${link.clicks || 0}</td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151;">
              <span style="display:inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 12px; background-color: ${status === 'Active' ? '#f1f5f9' : (status === 'Expired' ? '#fee2e2' : '#f3f4f6')}; color: ${status === 'Active' ? '#475569' : (status === 'Expired' ? '#ef4444' : '#9ca3af')};">
                 ${status}
@@ -79,7 +82,32 @@ export async function sendReportEmail(emailAddress: string, links: LinkType[]) {
         <p style="color: #64748b; margin-top: 8px;">Your Dashboard Report</p>
       </div>
 
-      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 24px;">
+        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="text-align: left;">
+            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px;">Generated By</div>
+            <div style="font-size: 14px; color: #0f172a; font-weight: 700;">${sender?.name || 'System User'} <span style="font-weight: 400; color: #64748b;">(${sender?.id || 'N/A'})</span></div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px;">Role & Timestamp</div>
+            <div style="font-size: 14px; color: #0f172a; font-weight: 700;">${sender?.isAdmin ? 'ADMINISTRATOR' : 'USER'} <span style="font-weight: 400; color: #64748b; font-size: 12px;">• ${new Date().toLocaleString()}</span></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="text-align: left;">
+            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 4px;">Applied Constraints</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+              ${filters && Object.keys(filters).length > 0 && Object.values(filters).some(v => v !== 'all') 
+                ? Object.entries(filters)
+                    .filter(([_, value]) => value !== 'all')
+                    .map(([key, value]) => `<span style="background-color: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: capitalize;">${key.replace(/Filter|Query/g, '')}: ${value}</span>`)
+                    .join(' ')
+                : '<span style="color: #94a3b8; font-size: 11px; font-style: italic;">No specific constraints applied (showing all)</span>'}
+            </div>
+          </div>
+        </div>
+
         <h2 style="margin-top: 0; color: #0f172a; font-size: 20px;">Link Performance Summary</h2>
         <p style="color: #475569; margin-bottom: 24px;">Here are your filtered links and their current analytics performance:</p>
         
@@ -96,30 +124,313 @@ export async function sendReportEmail(emailAddress: string, links: LinkType[]) {
             ${trs}
           </tbody>
         </table>
-
-        ${links.length === 0 ? '<p style="text-align: center; color: #64748b; padding: 20px;">No links match your report criteria.</p>' : ''}
       </div>
 
-      <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 14px;">
+      <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 12px; padding: 0 40px; line-height: 1.6;">
+        <p style="margin-bottom: 12px;"><strong>Disclaimer:</strong> This report contains sensitive platform analytics and is intended for the recipient only. Unauthorized distribution or reproduction is strictly prohibited. Generated via Link-Wise Intelligence.</p>
         <p>&copy; ${new Date().getFullYear()} Link-Wise App. All rights reserved.</p>
       </div>
     </div>
   `;
 
+  const subject = `Report: Your Link-Wise Analytics (${new Date().toLocaleDateString()})`;
+  const fromName = process.env.SMTP_FROM_NAME || "Link-Wise";
+  const fromEmail = process.env.SMTP_FROM_EMAIL || "support@slpro.in";
+  
+  const from = `"${fromName}" <${fromEmail}>`;
+  const date = new Date().toUTCString();
+  const messageId = `<${Math.random().toString(36).substring(2)}@linkwise.app>`;
+
+  const raw = [
+    `From: ${from}`,
+    `To: ${emailAddress}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    `Date: ${date}`,
+    `Message-ID: ${messageId}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    html
+  ].join('\r\n');
+
   const info = await transporter.sendMail({
-    from: '"Link-Wise" <reports@linkwise.app>',
-    to: emailAddress,
-    subject: `Report: Your Link-Wise Analytics (${new Date().toLocaleDateString()})`,
-    text: "Please view this email in an HTML compatible client.", // plaintext fallback
-    html: html,
+    raw: raw,
+    envelope: {
+      from: process.env.SMTP_USER || fromEmail,
+      to: [emailAddress]
+    }
   });
 
-  console.log("Message sent: %s", info.messageId);
-  // Preview only available when sending through an Ethereal account
-  const previewUrl = nodemailer.getTestMessageUrl(info);
-  if (previewUrl) {
-    console.log("Preview URL: %s", previewUrl);
+  return { messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) };
+}
+
+/**
+ * Sends a high-fidelity summary report of email campaigns with visual graphics.
+ */
+export async function sendCampaignReportEmail(
+  emailAddress: string, 
+  campaigns: EmailCampaign[], 
+  sender?: { name?: string | null, id: string, isAdmin: boolean },
+  filters?: Record<string, string>
+) {
+  const transporter = await createMailer();
+
+  const totalSends = campaigns.reduce((sum, c) => sum + (c.sendsCount || 0), 0);
+  const totalOpens = campaigns.reduce((sum, c) => sum + (c.opensCount || 0), 0);
+  const totalRate = totalSends ? Math.round((totalOpens / totalSends) * 100) : 0;
+  const totalUnopened = totalSends - totalOpens;
+
+  // Chart configuration for QuickChart.io (Pie Chart - Opens vs Unopened)
+  const chartConfig = {
+    type: 'doughnut',
+    data: {
+      labels: ['Opened', 'Unopened'],
+      datasets: [{
+        data: [totalOpens, totalUnopened],
+        backgroundColor: ['#0f172a', '#f1f5f9'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false }
+      },
+      cutout: '70%'
+    }
+  };
+  const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=200&h=200`;
+
+  const trs = campaigns.map(camp => {
+    const rate = camp.sendsCount ? Math.round(((camp.opensCount || 0) / camp.sendsCount) * 100) : 0;
+    return `
+        <tr>
+          <td style="padding: 16px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+            <div style="font-weight: 800; color: #0f172a; margin-bottom: 4px; font-size: 14px;">${camp.name}</div>
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Template: ${camp.templateName || 'Custom'}</div>
+          </td>
+          <td style="padding: 16px 12px; border-bottom: 1px solid #f1f5f9; text-align: center; vertical-align: top;">
+            <div style="background-color: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+              <div style="font-size: 14px; font-weight: 800; color: #0f172a;">${camp.opensCount || 0}</div>
+              <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-top: 2px;">Opens</div>
+            </div>
+          </td>
+          <td style="padding: 16px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle;">
+            <div style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: 800; color: #0f172a;">${rate}% Conversion</span>
+              <span style="font-size: 10px; color: #94a3b8; font-weight: 600;">Reach: ${camp.sendsCount}</span>
+            </div>
+            <div style="height: 6px; background-color: #f1f5f9; border-radius: 9999px; width: 100%; overflow: hidden;">
+              <div style="height: 100%; width: ${rate}%; background-color: #0f172a; border-radius: 9999px;"></div>
+            </div>
+          </td>
+        </tr>
+      `;
+  }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Link-Wise Intelligence Report</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="max-width: 650px; margin: 40px auto; padding: 0 20px;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 48px;">
+          <h1 style="color: #0f172a; margin: 0; font-size: 32px; letter-spacing: -0.05em; font-weight: 900;">Link-Wise<span style="color: #64748b; font-weight: 400;"> Intelligence</span></h1>
+          <div style="height: 4px; width: 40px; background-color: #0f172a; margin: 16px auto 0; border-radius: 9999px;"></div>
+          <p style="color: #64748b; margin-top: 12px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">Campaign Batch Analytics Overview</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div style="margin-bottom: 40px;">
+          <table style="width: 100%; border-collapse: separate; border-spacing: 12px 0; margin-left: -12px; margin-right: -12px;">
+            <tr>
+              <td colspan="3" style="padding: 0 12px 12px 12px;">
+                <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 10px 16px;">
+                  <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 6px;">Report Parameters & Constraints</div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${filters && Object.keys(filters).length > 0 && Object.values(filters).some(v => v !== 'all')
+                      ? Object.entries(filters)
+                          .filter(([_, value]) => value !== 'all' && value !== '')
+                          .map(([key, value]) => `<span style="background-color: #ffffff; border: 1px solid #e2e8f0; color: #475569; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: capitalize;">${key.replace(/Filter|Query/g, '')}: ${value}</span>`)
+                          .join(' ')
+                      : '<span style="color: #94a3b8; font-size: 11px; font-style: italic;">Showing all data for the requested scope.</span>'}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="3" style="padding: 0 12px 24px 12px;">
+                <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="font-size: 12px; color: #475569; font-weight: 600;">
+                    Generated by: <span style="color: #0f172a;">${sender?.name || 'System User'} (${sender?.id || 'N/A'})</span>
+                  </div>
+                  <div style="font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${sender?.isAdmin ? 'ADMINISTRATOR' : 'USER'} • ${new Date().toLocaleString()}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 33.33%; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; padding: 24px; text-align: center;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 8px;">Total Reach</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a;">${totalSends}</div>
+              </td>
+              <td style="width: 33.33%; background-color: #0f172a; border: 1px solid #0f172a; border-radius: 16px; padding: 24px; text-align: center;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 8px;">Unique Opens</div>
+                <div style="font-size: 24px; font-weight: 900; color: #ffffff;">${totalOpens}</div>
+              </td>
+              <td style="width: 33.33%; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; padding: 24px; text-align: center;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 8px;">Conv. Rate</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a;">${totalRate}%</div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Analytics Visual Section -->
+        <div style="background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 32px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05); margin-bottom: 40px;">
+          <table style="width: 100%;">
+            <tr>
+              <td style="width: 200px; padding-right: 32px; vertical-align: middle;">
+                <img src="${chartUrl}" width="180" height="180" style="display: block;" alt="Performance Distribution Pie" />
+              </td>
+              <td style="vertical-align: middle;">
+                <h2 style="margin: 0 0 8px 0; color: #0f172a; font-size: 20px; font-weight: 800;">Engagement Analysis</h2>
+                <p style="margin: 0 0 24px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Overview of how your recipients are interacting with your batch outreaches. A higher conversion rate indicates strong template resonance.</p>
+                
+                <div style="background-color: #f8fafc; padding: 12px 16px; border-radius: 12px; border-left: 4px solid #0f172a;">
+                   <span style="font-size: 12px; font-weight: 800; color: #0f172a;">Top Insight:</span>
+                   <span style="font-size: 12px; color: #475569;">You reached <strong>${totalSends}</strong> users with an average quality score of <strong>${totalRate > 20 ? 'High' : 'Moderate'}</strong>.</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Campaign Breakdown Table -->
+        <div style="margin-bottom: 48px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="padding: 0 12px 12px 12px; text-align: left; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9;">Campaign</th>
+                <th style="padding: 0 12px 12px 12px; text-align: center; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9;">Opens</th>
+                <th style="padding: 0 12px 12px 12px; text-align: left; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9;">Performance</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${trs}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 32px 40px 0 40px; border-top: 1px solid #f1f5f9;">
+          <p style="color: #94a3b8; font-size: 11px; margin-bottom: 20px; line-height: 1.6;"><strong>Disclaimer:</strong> This intelligence report contains high-fidelity campaign performance data. Distribution is limited to authorized administrators. Integrity of this document is maintained by Link-Wise Intelligence.</p>
+          <p style="color: #94a3b8; font-size: 12px; font-weight: 500;">&copy; ${new Date().getFullYear()} Link-Wise App. All Intelligence Reserved.</p>
+          <div style="margin-top: 12px; display: inline-block;">
+             <span style="display: inline-block; width: 6px; height: 6px; background-color: #cbd5e1; border-radius: 9999px; margin: 0 4px;"></span>
+             <span style="display: inline-block; width: 6px; height: 6px; background-color: #64748b; border-radius: 9999px; margin: 0 4px;"></span>
+             <span style="display: inline-block; width: 6px; height: 6px; background-color: #cbd5e1; border-radius: 9999px; margin: 0 4px;"></span>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const subject = `Intelligence Report: Detailed Analytics Dashboard (${new Date().toLocaleDateString()})`;
+  const fromName = process.env.SMTP_FROM_NAME || "Link-Wise Intelligence";
+  const fromEmail = process.env.SMTP_FROM_EMAIL || "support@slpro.in";
+
+  const from = `"${fromName}" <${fromEmail}>`;
+  const date = new Date().toUTCString();
+  const messageId = `<intel-${Math.random().toString(36).substring(2)}@linkwise.app>`;
+
+  const raw = [
+    `From: ${from}`,
+    `To: ${emailAddress}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    `Date: ${date}`,
+    `Message-ID: ${messageId}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    html
+  ].join('\r\n');
+
+  const info = await transporter.sendMail({
+    raw: raw,
+    envelope: {
+      from: process.env.SMTP_USER || fromEmail,
+      to: [emailAddress]
+    }
+  });
+
+  return { messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) };
+}
+
+/**
+ * Sends a specific campaign email to a recipient.
+ * Injects a tracking pixel before dispatch.
+ */
+export async function sendCampaignEmail(
+  recipient: string,
+  template: { subject: string; html: string; text: string },
+  account: EmailAccount,
+  pixelUrl: string,
+  userName?: string
+) {
+  const transporter = await createMailer(account);
+
+  // Smarter pixel injection: insert before </body> or </html> if present, otherwise append
+  // Improved pixel tag: use absolute positioning instead of display:none to avoid Gmail blocking
+  // Added newline before the tag to ensure we don't hit SMTP line length limits
+  const pixelTag = `\n<img src="${pixelUrl}" width="1" height="1" style="opacity:0;position:absolute;visibility:hidden;border:0;white-space:nowrap;" alt="" />\n`;
+  let trackedHtml = template.html;
+
+  if (trackedHtml.toLowerCase().includes('</body>')) {
+    trackedHtml = trackedHtml.replace(/<\/body>/i, `${pixelTag}</body>`);
+  } else if (trackedHtml.toLowerCase().includes('</html>')) {
+    trackedHtml = trackedHtml.replace(/<\/html>/i, `${pixelTag}</html>`);
+  } else {
+    trackedHtml += pixelTag;
   }
 
-  return { messageId: info.messageId, previewUrl };
+  // Determine Sender Name: 1. Account specific name, 2. Logged User name, 3. Provider name
+  const senderDisplayName = account.senderName || userName || `${account.provider} Sender`;
+
+  const subject = template.subject;
+  const from = `"${senderDisplayName}" <${account.username}>`;
+  const date = new Date().toUTCString();
+  const messageId = `<${Math.random().toString(36).substring(2)}@${account.username.split('@')[1] || 'linkwise.app'}>`;
+
+  const raw = [
+    `From: ${from}`,
+    `To: ${recipient}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    `Date: ${date}`,
+    `Message-ID: ${messageId}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    trackedHtml
+  ].join('\r\n');
+
+  const info = await transporter.sendMail({
+    raw: raw,
+    envelope: {
+      from: account.username,
+      to: [recipient]
+    }
+  });
+
+  return info;
 }
