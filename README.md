@@ -1,130 +1,81 @@
-# Link-Wise
+# Link-Wise 🔗 📊
+**High-Performance Link Analytics & Stealth Email Tracking Platform**
 
-**Link-Wise** is a production-ready URL shortener and analytics platform built with **Next.js 15**, **MySQL**, and use **Keycloak based SSO** — part of the **SL Pro Ecosystem**.
+Created by **[Naveen Chauhan](https://github.com/ncrkindia)**
 
----
+Link-Wise is an enterprise-ready URL shortening and analytics platform with integrated "Stealth Tracking" for email campaigns. It allows you to monitor link performance, track email conversions without annoying recipients, and manage global analytics across multiple user accounts and domains.
 
-## Features
+## 🚀 Core Features
 
-- 🔗 **URL Shortening** — Generate short links with custom expiry and password protection
-- 📊 **Analytics Dashboard** — Track clicks per link with total click, link & top-link summaries
-- 🔐 **Keycloak SSO** — Secure login via OpenID Connect; user roles synced on every login
-- 🔒 **Password-Protected Links** — Visitors must enter a password before being redirected
-- ⏰ **Expiry Dates** — Links automatically stop working after a configured date
-- ✅ **Enable / Disable Links** — Toggle links without deleting them
-- 🗑️ **Soft Delete** — Links are soft-deleted to preserve analytics history
-- 📋 **Bulk Shortener** — Paste or upload a CSV/TXT file to generate links in bulk
-- 🔍 **Dashboard Filters** — Filter your links by protection, created date range, and expiry status
-- 📤 **Report Export** — Download filtered links as **CSV** or **PDF** (branded print view)
-- 📧 **Email Reports** — Send a branded HTML analytics report via SMTP (or Ethereal for testing)
-- 👥 **Admin Panel** — Manage all users and links app-wide
+- **Smart URL Shortening**: Custom link creation with optional password protection and expiry dates.
+- **Pixel Intelligence**: Zero-footprint 1x1 tracking pixels for email campaigns. Monitor opens, delivery, and interaction stealthily.
+- **Email Campaign Engine**: Launch and track email blasts directly from the dashboard using your own SMTP relays.
+- **Interactive Analytics**: Real-time charts, geographical heatmaps (Coming Soon), and device/browser intelligence.
+- **Admin Hub**: Global oversight of all system-wide links, users, and campaigns.
+- **Professional Reporting**: Send high-fidelity PDF/HTML reports with detailed filtering, generation metadata, and legal disclaimers.
 
----
+## 🛠 Tech Stack
 
-## Tech Stack
-
-| Layer        | Technology                         |
-|--------------|------------------------------------|
-| Framework    | Next.js 15 (App Router, Turbopack) |
-| Auth         | NextAuth.js v5 + Keycloak Provider |
-| Database     | MySQL 8 via `mysql2`               |
-| UI           | Shadcn/UI + Tailwind CSS           |
-| Charts       | Recharts                           |
-| Email        | Nodemailer (SMTP / Ethereal)       |
-| Validation   | Zod                                |
-| Containerization | Docker Compose                 |
+- **Framework**: Next.js 15 (App Router, Server Actions)
+- **Database**: MariaDB / MySQL
+- **Auth**: Keycloak (OIDC) / NextAuth.js
+- **UI**: Tailwind CSS, Shadcn/UI, Lucide Iconography
+- **Visuals**: Recharts, QuickChart.io
+- **Orchestration**: Docker, Supervisor, Shell Scripting
 
 ---
 
-## Getting Started
+## 📦 Zero-Configuration Deployment (Recommended)
 
-### Prerequisites
+Link-Wise is available as an **All-In-One Docker Bundle** which includes the Next.js app, MariaDB, and a pre-configured Keycloak server.
 
-- Node.js 20+
-- Docker & Docker Compose (for running MySQL + Keycloak locally)
-
-### 1. Clone & Install
-
+### 1. Build the All-In-One Image
 ```bash
-git clone <repo-url>
+docker build -t link-wise-bundle -f Dockerfile.bundle .
+```
+
+### 2. Run the Platform
+```bash
+docker run -p 3010:3010 -p 8080:8080 link-wise-bundle
+```
+*   **App URL**: `http://localhost:3010`
+*   **Keycloak URL**: `http://localhost:8080`
+*   **Admin Creds**: `admin@slpro.in` / `admin123`
+
+---
+
+## 🛠 Manual Installation
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/ncrkindia/link-wise.git
 cd link-wise
-npm install
 ```
 
-### 2. Configure Environment
+### 2. Environment Setup
+Copy `.env.example` to `.env.local` and fill in your details:
+- **DATABASE_URL**: Your MySQL/MariaDB connection string.
+- **AUTH_KEYCLOAK_ID/SECRET**: Your OIDC client credentials.
+- **SMTP_HOST/USER/PASS**: Credentials for the reporting/campaign engine.
 
-Copy and fill in your environment variables:
-
+### 3. Install & Start
 ```bash
-cp .env.local.example .env.local
-```
-
-| Variable                | Description                                     |
-|-------------------------|-------------------------------------------------|
-| `DATABASE_URL`          | MySQL connection string                         |
-| `AUTH_SECRET`           | Random secret for signing NextAuth tokens       |
-| `AUTH_KEYCLOAK_ID`      | Keycloak client ID                              |
-| `AUTH_KEYCLOAK_SECRET`  | Keycloak client secret                          |
-| `AUTH_KEYCLOAK_ISSUER`  | Keycloak realm issuer URL                       |
-| `NEXT_PUBLIC_APP_URL`   | Public base URL of the app                      |
-| `SMTP_HOST`             | *(Optional)* SMTP server host for email reports |
-| `SMTP_PORT`             | *(Optional)* SMTP port (default: 587)           |
-| `SMTP_USER`             | *(Optional)* SMTP login username                |
-| `SMTP_PASS`             | *(Optional)* SMTP login password                |
-
-> **Tip:** Leave `SMTP_HOST` empty to use [Ethereal Email](https://ethereal.email) for testing — a preview URL will print to the server console after each send.
-
-### 3. Start Services
-
-```bash
-docker-compose up -d    # Starts MySQL + Keycloak
-```
-
-### 4. Run the App
-
-```bash
+npm install --legacy-peer-deps
 npm run dev
 ```
 
-The app will be available at **http://localhost:9002**.
+---
+
+## Protocols & Compliance
+Link-Wise is designed for professional auditing. Reports generated by the system include:
+- **Generation Metadata**: Generator Name, Email, and System Role.
+- **Context Filtering**: Exact constraints (Time, Status, Type) used for data analysis.
+- **Legal Disclaimer**: Built-in compliance documentation in every intelligence report.
 
 ---
 
-## Project Structure
+## 📄 License
 
-```
-src/
-├── app/
-│   ├── dashboard/          # Authenticated user dashboard
-│   │   ├── page.tsx        # Server Component: fetches analytics & links
-│   │   └── links-table.tsx # Client Component: filtering, export, actions
-│   ├── login/              # Login entry point (health-checks Keycloak)
-│   └── s/[id]/             # Short link redirect handler
-├── components/
-│   ├── header.tsx          # Global navigation header
-│   ├── footer.tsx          # Global footer
-│   ├── link-shortener.tsx  # Link creation form
-│   └── bulk-shortener.tsx  # Bulk URL upload/paste form
-├── lib/
-│   ├── definitions.ts      # TypeScript type definitions
-│   ├── db.ts               # MySQL connection pool
-│   ├── data.ts             # Server-side data fetchers
-│   ├── actions.ts          # Next.js Server Actions
-│   ├── auth.ts             # Session + login/logout helpers
-│   └── email.ts            # SMTP email utility (Nodemailer)
-└── auth.ts                 # NextAuth.js + Keycloak configuration
-```
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
----
-
-## Support
-
-📧 [linkwise@slpro.in](mailto:linkwise@slpro.in)  
-© 2025 LinkWise · Part of the SL Pro Ecosystem
-
-
-![Home](screenshots/home-page.jpeg)
-
-![Dashboard](screenshots/dashboard-page.jpeg)
-
-![Admin](screenshots/admin-page.jpeg)       
+Developed with ❤️ by [Naveen Chauhan](https://github.com/ncrkindia)

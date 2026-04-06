@@ -1,7 +1,13 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": true,
+  "name": "link-wise",
+  "version": "1.0.0",
+  "private": false,
+  "license": "MIT",
+  "author": "Naveen Chauhan <https://github.com/ncrkindia>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ncrkindia/link-wise"
+  },
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",

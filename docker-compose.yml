@@ -18,6 +18,12 @@ services:
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://linkwise.slpro.in}
       - AUTH_TRUST_HOST=true
       - AUTH_URL=https://linkwise.slpro.in/api/auth
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
     restart: unless-stopped
   # db:
   #   image: mysql:8.0
