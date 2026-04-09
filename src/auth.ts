@@ -30,6 +30,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
       issuer: process.env.AUTH_KEYCLOAK_ISSUER,
       checks: ['state'], // Bypass PKCE issues locally
+      profile(profile) {
+        // Detailed logging to verify what Keycloak returns in the OIDC profile/userinfo
+        console.log(`[AUTH] Provider Profile for ${profile.email}:`, {
+          realm_access: profile.realm_access,
+          resource_access: profile.resource_access
+        });
+        return {
+          id: profile.sub,
+          name: profile.name ?? profile.preferred_username,
+          email: profile.email,
+          image: profile.picture,
+          // Explicitly map these so they are available in the 'profile' arg of signIn/jwt callbacks
+          realm_access: profile.realm_access,
+          resource_access: profile.resource_access,
+        };
+      },
     }),
   ],
   callbacks: {
@@ -54,11 +70,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Capture the ID token and roles from Keycloak on initial sign-in
       if (account && profile) {
         token.id_token = account.id_token;
-        // Collect roles from both realm and client resource access
-        token.realm_access = (profile as any).realm_access;
-        token.resource_access = (profile as any).resource_access;
+        // Try getting roles from the profile (Userinfo)
+        (token as any).realm_access = (profile as any).realm_access;
+        (token as any).resource_access = (profile as any).resource_access;
 
-        console.log(`[AUTH] JWT: Roles captured for ${token.email}:`, {
+        // Fallback: If roles are missing from the profile, decode the Access Token (manual JWT parse)
+        if (!(token as any).realm_access && account.access_token) {
+          try {
+            const parts = account.access_token.split('.');
+            if (parts.length === 3) {
+              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+              (token as any).realm_access = payload.realm_access;
+              (token as any).resource_access = payload.resource_access;
+              console.log(`[AUTH] Extracted roles from access_token for ${token.email}`);
+            }
+          } catch (e) {
+            console.error("[AUTH] CRITICAL: Failed to decode access_token:", e);
+          }
+        }
+
+        console.log(`[AUTH] JWT: Roles finalized for ${token.email}:`, {
           realm: (token as any).realm_access?.roles,
           resource: (token as any).resource_access?.['linkwise-client']?.roles
         });
@@ -79,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Defensive: Only sync to DB if we have a valid roles context to avoid accidental resets on tokens missing the claim
         const hasRolesContext = (token as any).realm_access || (token as any).resource_access;
-        
+
         if (hasRolesContext) {
           console.log(`[AUTH] Session sync for ${session.user.email} (isAdmin: ${isAdmin})`);
           await query(
