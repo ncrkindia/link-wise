@@ -31,11 +31,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       issuer: process.env.AUTH_KEYCLOAK_ISSUER,
       checks: ['state'], // Bypass PKCE issues locally
       profile(profile) {
-        // Detailed logging to verify what Keycloak returns in the OIDC profile/userinfo
-        console.log(`[AUTH] Provider Profile for ${profile.email}:`, {
-          realm_access: profile.realm_access,
-          resource_access: profile.resource_access
-        });
         return {
           id: profile.sub,
           name: profile.name ?? profile.preferred_username,
@@ -55,8 +50,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const realmRoles = (profile as any)?.realm_access?.roles || [];
         const resourceRoles = (profile as any)?.resource_access?.['linkwise-client']?.roles || [];
         const isAdmin = realmRoles.includes('LW_ADMIN') || resourceRoles.includes('LW_ADMIN');
-
-        console.log(`[AUTH] Sign-In sync for ${user.email}. isAdmin: ${isAdmin}`);
 
         // Ensure user exists and sync administrative status from Keycloak
         await query(
@@ -82,17 +75,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
               (token as any).realm_access = payload.realm_access;
               (token as any).resource_access = payload.resource_access;
-              console.log(`[AUTH] Extracted roles from access_token for ${token.email}`);
             }
           } catch (e) {
             console.error("[AUTH] CRITICAL: Failed to decode access_token:", e);
           }
         }
-
-        console.log(`[AUTH] JWT: Roles finalized for ${token.email}:`, {
-          realm: (token as any).realm_access?.roles,
-          resource: (token as any).resource_access?.['linkwise-client']?.roles
-        });
       }
       return token;
     },
@@ -112,7 +99,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const hasRolesContext = (token as any).realm_access || (token as any).resource_access;
 
         if (hasRolesContext) {
-          console.log(`[AUTH] Session sync for ${session.user.email} (isAdmin: ${isAdmin})`);
           await query(
             'INSERT INTO users (id, name, is_admin) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), is_admin = VALUES(is_admin)',
             [session.user.email, session.user.name || null, isAdmin]
