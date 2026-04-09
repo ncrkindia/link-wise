@@ -6,7 +6,7 @@ import Header from '@/components/header';
 import Footer from '@/components/footer';
 
 export const metadata: Metadata = {
-  title: 'LinkWise - Shorten, Manage, and Analyze Your Links',
+  title: `${process.env.NEXT_PUBLIC_APP_NAME} - Shorten, Manage, and Analyze Your Links`,
   description: 'A full-featured short link generator with custom auth, link management, and an admin dashboard.',
 };
 

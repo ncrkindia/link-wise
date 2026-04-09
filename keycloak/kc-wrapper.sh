@@ -11,6 +11,7 @@ echo "MariaDB is ready; starting Keycloak..."
 
 # Set default hostname if not provided (required for non-dev start)
 export KC_HOSTNAME=${KC_HOSTNAME:-localhost}
+echo "Keycloak Hostname: $KC_HOSTNAME"
 
 # Execute Keycloak
 exec /opt/keycloak/bin/kc.sh start "$@"

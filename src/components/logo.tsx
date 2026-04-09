@@ -7,7 +7,7 @@ export function Logo() {
       <div className="p-2 bg-primary/20 text-primary rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
         <LinkIcon className="h-5 w-5" />
       </div>
-      <span>LinkWise</span>
+      <span>{process.env.NEXT_PUBLIC_APP_NAME}</span>
     </Link>
   );
 }
