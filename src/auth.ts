@@ -33,10 +33,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, profile }) {
       if (user?.email) {
-        // Ensure user exists in our MySQL database and update name from Keycloak
-        await query('INSERT INTO users (id, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)', [user.email, user.name || null]);
+        // Extract LW_ADMIN role from Keycloak profile
+        const isAdmin = (profile as any)?.realm_access?.roles?.includes('LW_ADMIN') || false;
+
+        // Ensure user exists and sync administrative status from Keycloak
+        await query(
+          'INSERT INTO users (id, name, is_admin) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), is_admin = VALUES(is_admin)',
+          [user.email, user.name || null, isAdmin]
+        );
       }
       return true;
     },

@@ -1,6 +1,9 @@
 {
   "realm": "e-pahchaan",
   "enabled": true,
+  "loginTheme": "pahchaan",
+  "accountTheme": "pahchaan",
+  "adminTheme": "pahchaan",
   "clients": [
     {
       "clientId": "linkwise-client",
@@ -8,7 +11,6 @@
       "publicClient": false,
       "secret": "lH1pOZpmFtxSMD5hRsEZtjaH7SxibcEV",
       "redirectUris": [
-        "https://linkwise.slpro.in/*",
         "http://localhost:3010/*"
       ],
       "webOrigins": [
@@ -22,7 +24,7 @@
   "roles": {
     "realm": [
       {
-        "name": "GTS_ADMIN",
+        "name": "LW_ADMIN",
         "description": "Administrator Role for Link-Wise"
       }
     ]
@@ -43,8 +45,24 @@
         }
       ],
       "realmRoles": [
-        "GTS_ADMIN"
+        "LW_ADMIN"
       ]
+    },
+    {
+      "username": "test@slpro.in",
+      "email": "test@slpro.in",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": []
     }
   ]
 }

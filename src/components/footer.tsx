@@ -20,14 +20,14 @@ export default function Footer() {
                     <Logo />
                     <p className="text-sm text-primary font-medium tracking-wide">Part of the SL Pro Ecosystem</p>
                 </div>
-                
+
                 <div className="flex flex-col items-center sm:items-end space-y-2 text-sm text-muted-foreground">
-                    <a href="mailto:linkwise@slpro.in" className="flex items-center gap-2 hover:text-foreground transition-colors duration-200">
+                    <a href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`} className="flex items-center gap-2 hover:text-foreground transition-colors duration-200">
                         <Mail className="h-4 w-4" />
-                        linkwise@slpro.in
+                        {process.env.NEXT_PUBLIC_SUPPORT_EMAIL}
                     </a>
                     <p>
-                        © {new Date().getFullYear()} LinkWise. All rights reserved.
+                        © {new Date().getFullYear()} {process.env.NEXT_PUBLIC_APP_NAME}. All rights reserved.
                     </p>
                 </div>
             </div>

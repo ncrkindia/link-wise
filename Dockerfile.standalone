@@ -58,12 +58,31 @@ RUN chmod +x /app/entrypoint-standalone.sh
 # MariaDB/System Logs directories
 RUN mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld
 
-# Environment for local services
+# Environment for standalone deployment
+ENV KC_HOSTNAME="localhost"
+ENV AUTH_URL="http://localhost:3010"
+ENV NEXT_PUBLIC_APP_URL="${AUTH_URL}"
+ENV AUTH_KEYCLOAK_ISSUER="http://${KC_HOSTNAME}:8080/realms/e-pahchaan"
+ENV NEXT_PUBLIC_APP_NAME="LinkWise"
+ENV NEXT_PUBLIC_SUPPORT_EMAIL="linkwise@slpro.in"
+
+# SMTP Configuration for sending emails and sytem reports
+ENV SMTP_HOST=""
+ENV SMTP_PORT=""
+ENV SMTP_USER=""
+ENV SMTP_PASS=""
+ENV SMTP_FROM_NAME="Link-Wise"
+ENV SMTP_FROM_EMAIL=""
+
+# Proxy and Security Settings
+ENV KC_PROXY="edge"
+ENV KC_HOSTNAME_STRICT="false"
+ENV KC_HTTP_ENABLED="true"
+
+# Internal Security
 ENV DATABASE_URL="mysql://linkwise_user:linkwise_pass@localhost:3306/linkwise"
 ENV AUTH_KEYCLOAK_ID="linkwise-client"
 ENV AUTH_KEYCLOAK_SECRET="lH1pOZpmFtxSMD5hRsEZtjaH7SxibcEV"
-ENV AUTH_KEYCLOAK_ISSUER="http://localhost:8080/realms/e-pahchaan"
-ENV NEXT_PUBLIC_APP_URL="http://localhost:3010"
 ENV AUTH_SECRET="vjsjhkhjdhni782gbsupfsiuyrhnsg8"
 ENV AUTH_TRUST_HOST=true
 
