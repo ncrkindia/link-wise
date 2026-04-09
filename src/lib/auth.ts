@@ -54,8 +54,11 @@ export async function getLogoutUrl() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://linkwise.slpro.in';
   const idToken = (session as any)?.id_token;
   
+  // Clean up the redirect URI (remove trailing slashes to match whitelist exactly)
+  const cleanAppUrl = appUrl.replace(/\/$/, '');
+  
   // OIDC standard logout endpoint
-  let logoutUrl = `${issuer}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(appUrl)}`;
+  let logoutUrl = `${issuer}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(cleanAppUrl)}`;
   
   if (idToken) {
     logoutUrl += `&id_token_hint=${idToken}`;

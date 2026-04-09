@@ -1,23 +1,36 @@
-version: '3.8'
-
 services:
   link-wise:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+        - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+        - NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}
+        - AUTH_URL=${AUTH_URL}
     container_name: link-wise-app
     ports:
-      # Exposes the application externally on port 9358 while routing inside to Next.js 3000
       - "3010:3010"
     environment:
+      # Database connection (External MySQL / MariaDB)
       - DATABASE_URL=${DATABASE_URL}
+
+      # NextAuth.js Security
       - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_TRUST_HOST=true
+      - AUTH_URL=${AUTH_URL}
+
+      # OIDC / Keycloak Settings (External Keycloak)
       - AUTH_KEYCLOAK_ID=${AUTH_KEYCLOAK_ID}
       - AUTH_KEYCLOAK_SECRET=${AUTH_KEYCLOAK_SECRET}
       - AUTH_KEYCLOAK_ISSUER=${AUTH_KEYCLOAK_ISSUER}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://linkwise.slpro.in}
-      - AUTH_TRUST_HOST=true
-      - AUTH_URL=https://linkwise.slpro.in/api/auth
+
+      # UI Branding & Public URLs
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+      - NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}
+
+      # SMTP Configuration
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USER=${SMTP_USER}
@@ -25,25 +38,3 @@ services:
       - SMTP_FROM_NAME=${SMTP_FROM_NAME}
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
     restart: unless-stopped
-  # db:
-  #   image: mysql:8.0
-  #   container_name: link-wise-db
-  #   ports:
-  #     - "3306:3306"
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: root_password
-  #     MYSQL_DATABASE: linkwise
-  #     MYSQL_USER: linkwise_user
-  #     MYSQL_PASSWORD: linkwise_pass
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
-  #     # Automatically initializes the schema on the first run of the database
-  #     - ./src/lib/mysql-schema.sql:/docker-entrypoint-initdb.d/init.sql
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-  #     timeout: 20s
-  #     retries: 10
-  #   restart: unless-stopped
-
-  # volumes:
-  #   mysql_data:

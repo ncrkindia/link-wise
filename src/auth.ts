@@ -35,8 +35,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, profile }) {
       if (user?.email) {
-        // Extract LW_ADMIN role from Keycloak profile
-        const isAdmin = (profile as any)?.realm_access?.roles?.includes('LW_ADMIN') || false;
+        // Extract LW_ADMIN role from Keycloak profile (check both realm and resource access)
+        const realmRoles = (profile as any)?.realm_access?.roles || [];
+        const resourceRoles = (profile as any)?.resource_access?.['linkwise-client']?.roles || [];
+        const isAdmin = realmRoles.includes('LW_ADMIN') || resourceRoles.includes('LW_ADMIN');
+
+        console.log(`[AUTH] Sign-In sync for ${user.email}. isAdmin: ${isAdmin}`);
 
         // Ensure user exists and sync administrative status from Keycloak
         await query(
@@ -46,17 +50,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, account }) {
-      // Capture the ID token from Keycloak on initial sign-in
-      if (account) {
+    async jwt({ token, account, profile }) {
+      // Capture the ID token and roles from Keycloak on initial sign-in
+      if (account && profile) {
         token.id_token = account.id_token;
+        // Collect roles from both realm and client resource access
+        token.realm_access = (profile as any).realm_access;
+        token.resource_access = (profile as any).resource_access;
+
+        console.log(`[AUTH] JWT: Roles captured for ${token.email}:`, {
+          realm: (token as any).realm_access?.roles,
+          resource: (token as any).resource_access?.['linkwise-client']?.roles
+        });
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user?.email) {
-        // Pass the id_token from the JWT to the session
+        // Pass the id_token from the JWT to the session for logout
         (session as any).id_token = token.id_token;
+
+        // Perform JIT (Just-In-Time) user synchronization.
+        // This ensures the user record exists locally even if the database was wiped while they remain logged in via OIDC.
+        const tokenAny = token as any;
+        const realmRoles = tokenAny.realm_access?.roles || [];
+        const resourceRoles = tokenAny.resource_access?.['linkwise-client']?.roles || [];
+        const isAdmin = realmRoles.includes('LW_ADMIN') || resourceRoles.includes('LW_ADMIN');
+
+        // Defensive: Only sync to DB if we have a valid roles context to avoid accidental resets on tokens missing the claim
+        const hasRolesContext = (token as any).realm_access || (token as any).resource_access;
+        
+        if (hasRolesContext) {
+          console.log(`[AUTH] Session sync for ${session.user.email} (isAdmin: ${isAdmin})`);
+          await query(
+            'INSERT INTO users (id, name, is_admin) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), is_admin = VALUES(is_admin)',
+            [session.user.email, session.user.name || null, isAdmin]
+          );
+        }
 
         const users = await query<any[]>('SELECT * FROM users WHERE id = ? LIMIT 1', [session.user.email]);
         if (users.length > 0) {
@@ -64,11 +94,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (session.user as any).isAdmin = !!users[0].is_admin;
           (session.user as any).isBlocked = !!users[0].is_blocked;
           if (users[0].name) {
-             session.user.name = users[0].name;
+            session.user.name = users[0].name;
           }
-        } else {
-          (session.user as any).isAdmin = false;
-          (session.user as any).isBlocked = false;
         }
       }
       return session;
